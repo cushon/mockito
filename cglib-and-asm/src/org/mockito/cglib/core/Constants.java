@@ -22,6 +22,10 @@ import org.mockito.asm.Type;
  * @version $Id: Constants.java,v 1.21 2006/03/05 02:43:19 herbyderby Exp $
  */
 public interface Constants extends org.mockito.asm.Opcodes {
+
+    /* Indicates the ASM API version that is used throughout cglib */
+    public static final int ASM_API = AsmApi.value();
+
     public static final Class[] EMPTY_CLASS_ARRAY = {};
     public static final Type[] TYPES_EMPTY = {};
 
@@ -53,7 +57,8 @@ public interface Constants extends org.mockito.asm.Opcodes {
     public static final Type TYPE_ERROR = TypeUtils.parseType("Error");
     public static final Type TYPE_SYSTEM = TypeUtils.parseType("System");
     public static final Type TYPE_SIGNATURE = TypeUtils.parseType("org.mockito.cglib.core.Signature");
-    
+    public static final Type TYPE_TYPE = Type.getType(Type.class);
+
     public static final String CONSTRUCTOR_NAME = "<init>";
     public static final String STATIC_NAME = "<clinit>";
     public static final String SOURCE_FILE = "<generated>";

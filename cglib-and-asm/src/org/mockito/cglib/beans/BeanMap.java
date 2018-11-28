@@ -15,13 +15,13 @@
  */
 package org.mockito.cglib.beans;
 
+import java.security.ProtectionDomain;
 import java.beans.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.*;
-
-import org.mockito.asm.ClassVisitor;
 import org.mockito.cglib.core.*;
+import org.mockito.asm.ClassVisitor;
 
 /**
  * A <code>Map</code>-based view of a JavaBean.  The default set of keys is the
@@ -110,6 +110,10 @@ abstract public class BeanMap implements Map {
 
         protected ClassLoader getDefaultClassLoader() {
             return beanClass.getClassLoader();
+        }
+
+        protected ProtectionDomain getProtectionDomain() {
+        	return ReflectUtils.getProtectionDomain(beanClass);
         }
 
         /**
@@ -217,7 +221,7 @@ abstract public class BeanMap implements Map {
     public boolean containsValue(Object value) {
         for (Iterator it = keySet().iterator(); it.hasNext();) {
             Object v = get(it.next());
-            if (((value == null) && (v == null)) || value.equals(v))
+            if (((value == null) && (v == null)) || (value != null && value.equals(v)))
                 return true;
         }
         return false;

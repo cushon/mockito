@@ -15,13 +15,12 @@
  */
 package org.mockito.cglib.transform.impl;
 
+import org.mockito.cglib.transform.*;
 import java.lang.reflect.*;
 import java.util.*;
-
+import org.mockito.cglib.core.*;
 import org.mockito.asm.Attribute;
 import org.mockito.asm.Type;
-import org.mockito.cglib.core.*;
-import org.mockito.cglib.transform.*;
 
 /**
  * @author Juozas Baliuka
@@ -76,8 +75,8 @@ public class AddDelegateTransformer extends ClassEmitterTransformer {
         if (sig.getName().equals(Constants.CONSTRUCTOR_NAME)) {
             return new CodeEmitter(e) {
                 private boolean transformInit = true;
-                public void visitMethodInsn(int opcode, String owner, String name, String desc) {
-                    super.visitMethodInsn(opcode, owner, name, desc);
+                public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
+                    super.visitMethodInsn(opcode, owner, name, desc, itf);
                     if (transformInit && opcode == Constants.INVOKESPECIAL) {
                         load_this();
                         new_instance(delegateType);

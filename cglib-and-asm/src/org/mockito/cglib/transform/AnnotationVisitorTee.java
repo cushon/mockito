@@ -15,9 +15,10 @@
  */
 package org.mockito.cglib.transform;
 
+import org.mockito.cglib.core.Constants;
 import org.mockito.asm.AnnotationVisitor;
 
-public class AnnotationVisitorTee implements AnnotationVisitor {
+public class AnnotationVisitorTee extends AnnotationVisitor {
     private AnnotationVisitor av1, av2;
 
     public static AnnotationVisitor getInstance(AnnotationVisitor av1, AnnotationVisitor av2) {
@@ -29,6 +30,7 @@ public class AnnotationVisitorTee implements AnnotationVisitor {
     }
 
     public AnnotationVisitorTee(AnnotationVisitor av1, AnnotationVisitor av2) {
+	super(Constants.ASM_API);
         this.av1 = av1;
         this.av2 = av2;
     }

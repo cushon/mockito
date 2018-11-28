@@ -17,6 +17,12 @@ package org.mockito.cglib.core;
 
 import org.mockito.asm.Type;
 
-public interface Customizer {
+/**
+ * Customizes key types for {@link KeyFactory} when building equals, hashCode, and toString.
+ * For customization of field types, use {@link FieldTypeCustomizer}
+ *
+ * @see KeyFactory#CLASS_BY_NAME
+ */
+public interface Customizer extends KeyFactoryCustomizer {
     void customize(CodeEmitter e, Type type);
 }

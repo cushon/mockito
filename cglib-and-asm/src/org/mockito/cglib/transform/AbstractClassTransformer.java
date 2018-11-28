@@ -15,13 +15,12 @@
  */
 package org.mockito.cglib.transform;
 
-import org.mockito.asm.ClassAdapter;
+import org.mockito.cglib.core.Constants;
 import org.mockito.asm.ClassVisitor;
-import org.mockito.cglib.core.CodeGenerationException;
 
-abstract public class AbstractClassTransformer extends ClassAdapter implements ClassTransformer {
+abstract public class AbstractClassTransformer extends ClassTransformer {
     protected AbstractClassTransformer() {
-        super(null);
+        super(Constants.ASM_API);
     }
 
     public void setTarget(ClassVisitor target) {

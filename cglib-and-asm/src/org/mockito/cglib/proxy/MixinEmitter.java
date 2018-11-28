@@ -17,10 +17,9 @@ package org.mockito.cglib.proxy;
 
 import java.lang.reflect.Method;
 import java.util.*;
-
+import org.mockito.cglib.core.*;
 import org.mockito.asm.ClassVisitor;
 import org.mockito.asm.Type;
-import org.mockito.cglib.core.*;
 
 /**
  * @author Chris Nokleberg
@@ -64,7 +63,11 @@ class MixinEmitter extends ClassEmitter {
             for (int j = 0; j < methods.length; j++) {
                 if (unique.add(MethodWrapper.create(methods[j]))) {
                     MethodInfo method = ReflectUtils.getMethodInfo(methods[j]);
-                    e = EmitUtils.begin_method(this, method, Constants.ACC_PUBLIC);
+                    int modifiers = Constants.ACC_PUBLIC;
+                    if ((method.getModifiers() & Constants.ACC_VARARGS) == Constants.ACC_VARARGS) {
+                        modifiers |= Constants.ACC_VARARGS;
+                    }
+                    e = EmitUtils.begin_method(this, method, modifiers);
                     e.load_this();
                     e.getfield(FIELD_NAME);
                     e.aaload((route != null) ? route[i] : i);

@@ -16,10 +16,10 @@
 package org.mockito.cglib.reflect;
 
 import java.lang.reflect.*;
-
+import java.security.ProtectionDomain;
+import org.mockito.cglib.core.*;
 import org.mockito.asm.ClassVisitor;
 import org.mockito.asm.Type;
-import org.mockito.cglib.core.*;
 
 /**
  * @author Chris Nokleberg
@@ -71,6 +71,10 @@ abstract public class ConstructorDelegate {
 
         protected ClassLoader getDefaultClassLoader() {
             return targetClass.getClassLoader();
+        }
+
+        protected ProtectionDomain getProtectionDomain() {
+        	return ReflectUtils.getProtectionDomain(targetClass);
         }
 
         public void generateClass(ClassVisitor v) {

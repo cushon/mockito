@@ -19,14 +19,14 @@ import java.beans.*;
 import java.lang.reflect.*;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.security.PrivilegedExceptionAction;
 import java.security.ProtectionDomain;
 import java.util.*;
-
 import org.mockito.asm.Attribute;
 import org.mockito.asm.Type;
 
 /**
- * @version $Id: ReflectUtils.java,v 1.29 2006/02/28 00:30:51 herbyderby Exp $
+ * @version $Id: ReflectUtils.java,v 1.30 2009/01/11 19:47:49 herbyderby Exp $
  */
 public class ReflectUtils {
     private ReflectUtils() { }
@@ -34,35 +34,84 @@ public class ReflectUtils {
     private static final Map primitives = new HashMap(8);
     private static final Map transforms = new HashMap(8);
     private static final ClassLoader defaultLoader = ReflectUtils.class.getClassLoader();
-    private static Method DEFINE_CLASS;
+    private static Method DEFINE_CLASS, DEFINE_CLASS_UNSAFE;
     private static final ProtectionDomain PROTECTION_DOMAIN;
+    private static final Object UNSAFE;
+    private static final Throwable THROWABLE;
+
+    private static final List<Method> OBJECT_METHODS = new ArrayList<Method>();
     
     static {
-        PROTECTION_DOMAIN = (ProtectionDomain)AccessController.doPrivileged(new PrivilegedAction() {
-            public Object run() {
-                return ReflectUtils.class.getProtectionDomain();
+        ProtectionDomain protectionDomain;
+        Method defineClass, defineClassUnsafe;
+        Object unsafe;
+        Throwable throwable = null;
+        try {
+            protectionDomain = getProtectionDomain(ReflectUtils.class);
+            try {
+                defineClass = (Method) AccessController.doPrivileged(new PrivilegedExceptionAction() {
+                    public Object run() throws Exception {
+                            Class loader = Class.forName("java.lang.ClassLoader"); // JVM crash w/o this
+                            Method defineClass = loader.getDeclaredMethod("defineClass",
+                                                                    new Class[]{ String.class,
+                                                                                 byte[].class,
+                                                                                 Integer.TYPE,
+                                                                                 Integer.TYPE,
+                                                                                 ProtectionDomain.class });
+                            defineClass.setAccessible(true);
+                            return defineClass;
+                    }
+                });
+                defineClassUnsafe = null;
+                unsafe = null;
+            } catch (Throwable t) {
+                // Fallback on Jigsaw where this method is not available.
+                throwable = t;
+                defineClass = null;
+                unsafe = AccessController.doPrivileged(new PrivilegedExceptionAction() {
+                    public Object run() throws Exception {
+                        Class u = Class.forName("sun.misc.Unsafe");
+                        Field theUnsafe = u.getDeclaredField("theUnsafe");
+                        theUnsafe.setAccessible(true);
+                        return theUnsafe.get(null);
+                    }
+                });
+                Class u = Class.forName("sun.misc.Unsafe");
+                defineClassUnsafe = u.getMethod("defineClass",
+                                        new Class[]{ String.class,
+                                                     byte[].class,
+                                                     Integer.TYPE,
+                                                     Integer.TYPE,
+                                                     ClassLoader.class,
+                                                     ProtectionDomain.class });
             }
-        });
-        
-        AccessController.doPrivileged(new PrivilegedAction() {
-            public Object run() {
-                try {
-                    Class loader = Class.forName("java.lang.ClassLoader"); // JVM crash w/o this
-                    DEFINE_CLASS = loader.getDeclaredMethod("defineClass",
-                                                            new Class[]{ String.class,
-                                                                         byte[].class,
-                                                                         Integer.TYPE,
-                                                                         Integer.TYPE,
-                                                                         ProtectionDomain.class });
-                    DEFINE_CLASS.setAccessible(true);
-                } catch (ClassNotFoundException e) {
-                    throw new CodeGenerationException(e);
-                } catch (NoSuchMethodException e) {
-                    throw new CodeGenerationException(e);
+            AccessController.doPrivileged(new PrivilegedExceptionAction() {
+                public Object run() throws Exception {
+                    Method[] methods = Object.class.getDeclaredMethods();
+                    for (Method method : methods) {
+                        if ("finalize".equals(method.getName())
+                                || (method.getModifiers() & (Modifier.FINAL | Modifier.STATIC)) > 0) {
+                            continue;
+                        }
+                        OBJECT_METHODS.add(method);
+                    }
+                    return null;
                 }
-                return null;
+            });
+        } catch (Throwable t) {
+            if (throwable == null) {
+                throwable = t;
             }
-        });
+            protectionDomain = null;
+            defineClass = null;
+            defineClassUnsafe = null;
+            unsafe = null;
+        }
+        PROTECTION_DOMAIN = protectionDomain;
+        DEFINE_CLASS = defineClass;
+        DEFINE_CLASS_UNSAFE = defineClassUnsafe;
+        UNSAFE = unsafe;
+        THROWABLE = throwable;
     }
         
     private static final String[] CGLIB_PACKAGES = {
@@ -88,7 +137,18 @@ public class ReflectUtils {
         transforms.put("short", "S");
         transforms.put("boolean", "Z");
     }
-        
+
+    public static ProtectionDomain getProtectionDomain(final Class source) {
+    	if(source == null) {
+    		return null;
+    	}
+        return (ProtectionDomain)AccessController.doPrivileged(new PrivilegedAction() {
+            public Object run() {
+                return source.getProtectionDomain();
+            }
+        });
+    }
+
     public static Type[] getExceptionTypes(Member member) {
         if (member instanceof Method) {
             return TypeUtils.getTypes(((Method)member).getExceptionTypes());
@@ -225,7 +285,9 @@ public class ReflectUtils {
             
         boolean flag = cstruct.isAccessible();
         try {
-            cstruct.setAccessible(true);
+            if (!flag) {
+                cstruct.setAccessible(true);
+            }
             Object result = cstruct.newInstance(args);
             return result;
         } catch (InstantiationException e) {
@@ -235,7 +297,9 @@ public class ReflectUtils {
         } catch (InvocationTargetException e) {
             throw new CodeGenerationException(e.getTargetException());
         } finally {
-            cstruct.setAccessible(flag);
+            if (!flag) {
+                cstruct.setAccessible(flag);
+            }
         }
                 
     }
@@ -346,7 +410,11 @@ public class ReflectUtils {
     public static List addAllMethods(final Class type, final List list) {
             
             
-        list.addAll(java.util.Arrays.asList(type.getDeclaredMethods()));
+        if (type == Object.class) {
+            list.addAll(OBJECT_METHODS);
+        } else
+            list.addAll(java.util.Arrays.asList(type.getDeclaredMethods()));
+
         Class superclass = type.getSuperclass();
         if (superclass != null) {
             addAllMethods(superclass, list);
@@ -381,8 +449,23 @@ public class ReflectUtils {
     }
         
     public static Class defineClass(String className, byte[] b, ClassLoader loader) throws Exception {
-        Object[] args = new Object[]{className, b, new Integer(0), new Integer(b.length), PROTECTION_DOMAIN };
-        return (Class)DEFINE_CLASS.invoke(loader, args);
+        return defineClass(className, b, loader, PROTECTION_DOMAIN);
+    }
+
+    public static Class defineClass(String className, byte[] b, ClassLoader loader, ProtectionDomain protectionDomain) throws Exception {
+        Class c;
+        if (DEFINE_CLASS != null) {
+            Object[] args = new Object[]{className, b, new Integer(0), new Integer(b.length), protectionDomain };
+            c = (Class)DEFINE_CLASS.invoke(loader, args);
+        } else if (DEFINE_CLASS_UNSAFE != null) {
+            Object[] args = new Object[]{className, b, new Integer(0), new Integer(b.length), loader, protectionDomain };
+            c = (Class)DEFINE_CLASS_UNSAFE.invoke(UNSAFE, args);
+        } else {
+            throw new CodeGenerationException(THROWABLE);
+        }
+        // Force static initializers to run.
+        Class.forName(className, true, loader);
+        return c;
     }
         
     public static int findPackageProtected(Class[] classes) {

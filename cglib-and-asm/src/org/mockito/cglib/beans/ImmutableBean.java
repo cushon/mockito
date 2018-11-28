@@ -17,11 +17,10 @@ package org.mockito.cglib.beans;
 
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Method;
-
+import java.security.ProtectionDomain;
+import org.mockito.cglib.core.*;
 import org.mockito.asm.ClassVisitor;
 import org.mockito.asm.Type;
-import org.mockito.cglib.core.*;
-
 /**
  * @author Chris Nokleberg
  */
@@ -59,6 +58,10 @@ public class ImmutableBean
 
         protected ClassLoader getDefaultClassLoader() {
             return target.getClassLoader();
+        }
+
+        protected ProtectionDomain getProtectionDomain() {
+        	return ReflectUtils.getProtectionDomain(target);
         }
 
         public Object create() {

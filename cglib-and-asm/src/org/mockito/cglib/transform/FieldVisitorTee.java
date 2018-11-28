@@ -15,15 +15,18 @@
  */
 package org.mockito.cglib.transform;
 
+import org.mockito.cglib.core.Constants;
 import org.mockito.asm.AnnotationVisitor;
 import org.mockito.asm.Attribute;
 import org.mockito.asm.FieldVisitor;
+import org.mockito.asm.TypePath;
 
-public class FieldVisitorTee implements FieldVisitor {
+public class FieldVisitorTee extends FieldVisitor {
     private FieldVisitor fv1, fv2;
     
     public FieldVisitorTee(FieldVisitor fv1, FieldVisitor fv2) {
-        this.fv1 = fv1;
+	super(Constants.ASM_API);
+	this.fv1 = fv1;
         this.fv2 = fv2;
     }
 
@@ -40,6 +43,11 @@ public class FieldVisitorTee implements FieldVisitor {
     public void visitEnd() {
         fv1.visitEnd();
         fv2.visitEnd();
+    }
+
+    public AnnotationVisitor visitTypeAnnotation(int typeRef, TypePath typePath, String desc, boolean visible) {
+        return AnnotationVisitorTee.getInstance(fv1.visitTypeAnnotation(typeRef, typePath, desc, visible),
+                                                fv2.visitTypeAnnotation(typeRef, typePath, desc, visible));
     }
 }
 

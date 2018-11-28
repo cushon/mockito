@@ -18,10 +18,10 @@ package org.mockito.cglib.beans;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.security.ProtectionDomain;
 import java.util.*;
-
-import org.mockito.asm.ClassVisitor;
 import org.mockito.cglib.core.*;
+import org.mockito.asm.ClassVisitor;
 
 /**
  * @author Juozas Baliuka
@@ -100,6 +100,10 @@ abstract public class BulkBean
 
         protected ClassLoader getDefaultClassLoader() {
             return target.getClassLoader();
+        }
+
+        protected ProtectionDomain getProtectionDomain() {
+        	return ReflectUtils.getProtectionDomain(target);
         }
 
         public BulkBean create() {

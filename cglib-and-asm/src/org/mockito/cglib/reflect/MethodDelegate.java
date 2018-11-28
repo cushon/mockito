@@ -16,11 +16,11 @@
 package org.mockito.cglib.reflect;
 
 import java.lang.reflect.*;
-
-import org.mockito.asm.ClassVisitor;
-import org.mockito.asm.Type;
+import java.security.ProtectionDomain;
 import org.mockito.cglib.*;
 import org.mockito.cglib.core.*;
+import org.mockito.asm.ClassVisitor;
+import org.mockito.asm.Type;
 
 // TODO: don't require exact match for return type
 
@@ -134,7 +134,7 @@ abstract public class MethodDelegate {
 
     public boolean equals(Object obj) {
         MethodDelegate other = (MethodDelegate)obj;
-        return target == other.target && eqMethod.equals(other.eqMethod);
+        return (other != null && target == other.target) && eqMethod.equals(other.eqMethod);
     }
 
     public int hashCode() {
@@ -153,12 +153,12 @@ abstract public class MethodDelegate {
           TypeUtils.parseType("org.mockito.cglib.reflect.MethodDelegate");
         private static final Signature NEW_INSTANCE =
           new Signature("newInstance", METHOD_DELEGATE, new Type[]{ Constants.TYPE_OBJECT });
-        
+
         private Object target;
         private Class targetClass;
         private String methodName;
         private Class iface;
-        
+
         public Generator() {
             super(SOURCE);
         }
@@ -182,6 +182,10 @@ abstract public class MethodDelegate {
 
         protected ClassLoader getDefaultClassLoader() {
             return targetClass.getClassLoader();
+        }
+
+        protected ProtectionDomain getProtectionDomain() {
+        	return ReflectUtils.getProtectionDomain(targetClass);
         }
 
         public MethodDelegate create() {
@@ -225,7 +229,11 @@ abstract public class MethodDelegate {
 
             // generate proxied method
             MethodInfo proxied = ReflectUtils.getMethodInfo(iface.getDeclaredMethods()[0]);
-            e = EmitUtils.begin_method(ce, proxied, Constants.ACC_PUBLIC);
+            int modifiers = Constants.ACC_PUBLIC;
+            if ((proxied.getModifiers() & Constants.ACC_VARARGS) == Constants.ACC_VARARGS) {
+                modifiers |= Constants.ACC_VARARGS;
+            }
+            e = EmitUtils.begin_method(ce, proxied, modifiers);
             e.load_this();
             e.super_getfield("target", Constants.TYPE_OBJECT);
             e.checkcast(methodInfo.getClassInfo().getType());
@@ -253,7 +261,7 @@ abstract public class MethodDelegate {
             e.putfield("eqMethod");
             e.return_value();
             e.end_method();
-            
+
             ce.end_class();
         }
     }

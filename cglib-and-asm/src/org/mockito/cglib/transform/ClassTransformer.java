@@ -15,8 +15,15 @@
  */
 package org.mockito.cglib.transform;
 
+import org.mockito.cglib.core.Constants;
 import org.mockito.asm.ClassVisitor;
 
-public interface ClassTransformer extends ClassVisitor {
-    public void setTarget(ClassVisitor target);
+public abstract class ClassTransformer extends ClassVisitor {
+    public ClassTransformer() {
+	super(Constants.ASM_API);
+    }
+    public ClassTransformer(int opcode) {
+	super(opcode);
+    }
+   public abstract void setTarget(ClassVisitor target);
 }
